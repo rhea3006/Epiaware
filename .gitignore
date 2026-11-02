@@ -35,3 +35,11 @@ artifacts/figures/
 
 # Generated experiment results
 results/
+
+# Downloaded datasets
+data/
+
+# Model checkpoints and experiment outputs
+checkpoints/
+*.pt
+*.pth
