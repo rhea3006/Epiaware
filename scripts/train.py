@@ -110,6 +110,24 @@ def main() -> None:
     results_dir = Path("results") / experiment["name"]
     results_dir.mkdir(parents=True, exist_ok=True)
 
+    # Save the exact configuration used for this experiment.
+    recorded_config = {
+        **config,
+        "experiment": {
+            **experiment,
+            "seed": seed,
+        },
+        "training": {
+            **training_config,
+            "epochs": epochs,
+        },
+    }
+
+    config_path = results_dir / f"config_seed_{seed}.yaml"
+
+    with config_path.open("w", encoding="utf-8") as file:
+        yaml.safe_dump(recorded_config, file, sort_keys=False)
+
     history_path = results_dir / f"history_seed_{seed}.json"
 
     with history_path.open("w", encoding="utf-8") as file:
