@@ -35,3 +35,7 @@ artifacts/figures/
 
 # Generated experiment results
 results/
+
+# Downloaded datasets and locally generated visualizations
+data/
+outputs/

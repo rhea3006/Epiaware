@@ -15,13 +15,17 @@ blur, and rotation must not be interpreted as equivalent shifts.
 
 | Corruption | Status | Severity 1--5 parameters |
 | --- | --- | --- |
-| Gaussian noise | CIFAR-10-C schedule | normalized sigma `[0.04, 0.06, 0.08, 0.09, 0.10]`; uint8 sigma `[10.2, 15.3, 20.4, 22.95, 25.5]` |
-| Gaussian blur | CIFAR-10-C extra-corruption schedule | Gaussian-filter sigma `[0.4, 0.6, 0.7, 0.8, 1.0]` |
+| Gaussian noise | CIFAR-10-C-parameterized project implementation | normalized sigma `[0.04, 0.06, 0.08, 0.09, 0.10]`; uint8 sigma `[10.2, 15.3, 20.4, 22.95, 25.5]` |
+| Gaussian blur | CIFAR-10-C-extra-parameterized project implementation | Gaussian-filter sigma `[0.4, 0.6, 0.7, 0.8, 1.0]` |
 | Rotation | Custom extension | counter-clockwise angle `[5, 10, 15, 20, 25]` degrees |
 
-The noise and blur schedules come from the CIFAR-specific generator in
-Hendrycks and Dietterich's corruption benchmark. Gaussian blur is one of the
-four extra CIFAR-10-C corruptions, rather than one of its 15 primary
+The noise and blur **parameters** come from the CIFAR-specific generator in
+Hendrycks and Dietterich's corruption benchmark. This project intentionally
+uses its own documented processing choices, including uint8-scale noise,
+rounding, a seeded local NumPy generator, and SciPy filtering. Therefore, the
+functions are CIFAR-10-C-parameterized implementations; they do not claim to
+be a bit-for-bit reproduction of the official generator. Gaussian blur is one
+of the four extra CIFAR-10-C corruptions, rather than one of its 15 primary
 corruptions. Rotation is **not** an official CIFAR-10-C corruption and is
 reported separately as a project-specific controlled shift.
 
@@ -60,13 +64,28 @@ Run the focused suite with:
 python -m pytest tests/test_corruptions.py -v
 ```
 
-Current result: **42 passed**.
+Focused corruption-suite result: **42 passed**.
+
+Run the complete repository suite with:
+
+```bash
+python -m pytest -v
+```
+
+Complete repository-suite result: **46 passed**. This includes the 42
+corruption tests above and 4 pre-existing reproducibility tests.
 
 ## Real CIFAR-10 validation and visual examples
 
-The visualization script downloads the CIFAR-10 test split if needed, checks
-the first selected real image against the image contract, then saves a grid
-with one clean image and all five severity levels for each corruption:
+**Status: pending validation.** The visualization script is ready, but the
+first CIFAR-10 download attempt ended when the remote server closed the
+connection. Before full distribution-shift experiments begin, the team must
+successfully generate and inspect the real-image grids at all five severity
+levels.
+
+The script downloads the CIFAR-10 test split if needed, checks the first
+selected real image against the image contract, then saves a grid with one
+clean image and all five severity levels for each corruption:
 
 ```bash
 python scripts/visualize_corruptions.py --download
