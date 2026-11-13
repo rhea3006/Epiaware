@@ -8,6 +8,10 @@ data:
   num_classes: 10
   batch_size: 128
   num_workers: 2
+  corruptions:
+    gaussian_noise:
+      normalized_standard_deviations: [0.08, 0.12, 0.18, 0.26, 0.38]
+      uint8_standard_deviations: [20.4, 30.6, 45.9, 66.3, 96.9]
 
 model:
   architecture: resnet18
