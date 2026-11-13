@@ -77,11 +77,19 @@ corruption tests above and 4 pre-existing reproducibility tests.
 
 ## Real CIFAR-10 validation and visual examples
 
-**Status: pending validation.** The visualization script is ready, but the
-first CIFAR-10 download attempt ended when the remote server closed the
-connection. Before full distribution-shift experiments begin, the team must
-successfully generate and inspect the real-image grids at all five severity
-levels.
+### Validation Status: Pending
+
+The synthetic-image tests have passed, but real CIFAR-10 visualization is not
+yet complete: the first dataset download attempt ended when the remote server
+closed the connection. Before full distribution-shift experiments begin, the
+team must:
+
+1. successfully load the CIFAR-10 test dataset;
+2. run the visualization script;
+3. generate grids for Gaussian noise, Gaussian blur, and custom rotation at
+   all five severity levels; and
+4. visually inspect those grids to confirm that the transformations look
+   sensible.
 
 The script downloads the CIFAR-10 test split if needed, checks the first
 selected real image against the image contract, then saves a grid with one
