@@ -2,51 +2,75 @@
 
 ## Image contract
 
-The corruption functions operate on **one** CIFAR-10 image at a time.  An input
-must be a NumPy RGB array of shape `(32, 32, 3)`, dtype `uint8`, with values in
-the inclusive range 0--255.  Each function returns a newly allocated image in
-the same format.  The dataset pipeline, rather than an individual corruption
-function, keeps the image associated with its original label.
+Each corruption operates on **one** CIFAR-10 image: a NumPy RGB array of shape
+`(32, 32, 3)`, dtype `uint8`, with values in the inclusive range 0--255. Each
+function returns a newly allocated image in the same format and never changes
+the input. The dataset pipeline—not an individual corruption function—keeps
+each image paired with its original label.
 
-## Gaussian noise
+Severity is ordered only within one corruption family. Severity 3 for noise,
+blur, and rotation must not be interpreted as equivalent shifts.
 
-`gaussian_noise(image, severity, seed=...)` adds independent, zero-mean
-Gaussian noise directly in uint8 pixel scale, rounds to the nearest integer,
-then clips to `[0, 255]`.  It uses a local `numpy.random.Generator`; identical
-input, severity, and seed therefore produce an identical result without
-altering global random state.
+## Parameters and benchmark status
 
-The five values are the approved CIFAR-10-C Gaussian-noise configuration from
-Hendrycks and Dietterich, *Benchmarking Neural Network Robustness to Common
-Corruptions and Perturbations*.
+| Corruption | Status | Severity 1--5 parameters |
+| --- | --- | --- |
+| Gaussian noise | CIFAR-10-C schedule | normalized sigma `[0.04, 0.06, 0.08, 0.09, 0.10]`; uint8 sigma `[10.2, 15.3, 20.4, 22.95, 25.5]` |
+| Gaussian blur | CIFAR-10-C extra-corruption schedule | Gaussian-filter sigma `[0.4, 0.6, 0.7, 0.8, 1.0]` |
+| Rotation | Custom extension | counter-clockwise angle `[5, 10, 15, 20, 25]` degrees |
 
-| Severity | Normalized standard deviation | uint8-scale standard deviation |
-| --- | ---: | ---: |
-| 1 | 0.08 | 20.4 |
-| 2 | 0.12 | 30.6 |
-| 3 | 0.18 | 45.9 |
-| 4 | 0.26 | 66.3 |
-| 5 | 0.38 | 96.9 |
+The noise and blur schedules come from the CIFAR-specific generator in
+Hendrycks and Dietterich's corruption benchmark. Gaussian blur is one of the
+four extra CIFAR-10-C corruptions, rather than one of its 15 primary
+corruptions. Rotation is **not** an official CIFAR-10-C corruption and is
+reported separately as a project-specific controlled shift.
 
-Severity is ordered within Gaussian noise only.  It is not assumed to be
-directly comparable with a severity number for a future blur or rotation
-corruption.
+## Corruption definitions
+
+### Gaussian noise
+
+`gaussian_noise(image, severity, seed=...)` adds independent zero-mean noise
+in uint8 pixel scale, rounds to the nearest integer, then clips to `[0, 255]`.
+It uses a local NumPy random generator, so identical input, severity, and seed
+give identical output without changing global random state.
+
+### Gaussian blur
+
+`gaussian_blur(image, severity)` applies a Gaussian filter independently to
+the RGB channels with the documented sigma. It uses nearest-edge boundary
+handling, is deterministic, and does not need a seed.
+
+### Rotation
+
+`rotation(image, severity)` rotates around the image centre. Positive angles
+are counter-clockwise. It uses bilinear interpolation; uncovered corner pixels
+use fixed black fill (value 0). It is deterministic and does not need a seed.
 
 ## Validation checks
 
-`tests/test_corruptions.py` uses synthetic images to verify:
+`tests/test_corruptions.py` uses synthetic images to check shape, `uint8`
+dtype, valid pixel range, input immutability, severity-to-parameter mapping,
+and invalid-severity rejection for all three corruptions. It additionally
+checks seeded noise reproducibility, noise clipping, Gaussian blur on a
+uniform image, and black corner fill after rotation.
 
-- shape and `uint8` dtype are preserved;
-- output values remain within `[0, 255]`, including when clipping is needed;
-- identical seeds reproduce identical output;
-- the input array is unchanged; and
-- the five severity levels map to the documented values, while invalid levels
-  are rejected.
+Run the focused suite with:
 
-## Current scope and limitations
+```bash
+python -m pytest tests/test_corruptions.py -v
+```
 
-Only Gaussian noise is implemented in this milestone.  Blur and rotation will
-be added after their parameters and, for rotation, interpolation and boundary
-fill behavior are agreed by the team.  The synthetic tests do not download
-CIFAR-10; an integration check on sampled CIFAR-10 images remains a later
-milestone.
+Current result: **42 passed**.
+
+## Real CIFAR-10 validation and visual examples
+
+The visualization script downloads the CIFAR-10 test split if needed, checks
+the first selected real image against the image contract, then saves a grid
+with one clean image and all five severity levels for each corruption:
+
+```bash
+python scripts/visualize_corruptions.py --download
+```
+
+The default output is `outputs/corruption_grid.png`. Downloaded datasets and
+generated figures are intentionally excluded from version control.

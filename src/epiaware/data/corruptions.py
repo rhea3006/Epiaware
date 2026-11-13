@@ -10,15 +10,18 @@ from __future__ import annotations
 import numbers
 
 import numpy as np
+from scipy import ndimage
 
 
 # Values established for CIFAR-10-C Gaussian noise.  The uint8 values are the
 # normalized values multiplied by 255 and are used because this module accepts
 # uint8 images in the inclusive range [0, 255].
-GAUSSIAN_NOISE_STD_NORMALIZED: tuple[float, ...] = (0.08, 0.12, 0.18, 0.26, 0.38)
+GAUSSIAN_NOISE_STD_NORMALIZED: tuple[float, ...] = (0.04, 0.06, 0.08, 0.09, 0.10)
 GAUSSIAN_NOISE_STD_UINT8: tuple[float, ...] = tuple(
     value * 255 for value in GAUSSIAN_NOISE_STD_NORMALIZED
 )
+GAUSSIAN_BLUR_SIGMAS: tuple[float, ...] = (0.4, 0.6, 0.7, 0.8, 1.0)
+ROTATION_ANGLES: tuple[float, ...] = (5.0, 10.0, 15.0, 20.0, 25.0)
 
 _CIFAR10_IMAGE_SHAPE = (32, 32, 3)
 
@@ -33,11 +36,7 @@ def gaussian_noise_std(severity: int) -> float:
         TypeError: If ``severity`` is not an integer.
         ValueError: If ``severity`` is outside the inclusive range 1--5.
     """
-    if isinstance(severity, bool) or not isinstance(severity, numbers.Integral):
-        raise TypeError("severity must be an integer from 1 to 5")
-    if not 1 <= severity <= len(GAUSSIAN_NOISE_STD_UINT8):
-        raise ValueError("severity must be between 1 and 5")
-    return GAUSSIAN_NOISE_STD_UINT8[int(severity) - 1]
+    return _parameter_for_severity(GAUSSIAN_NOISE_STD_UINT8, severity)
 
 
 def gaussian_noise(
@@ -68,6 +67,61 @@ def gaussian_noise(
     )
     shifted = image.astype(np.float64) + noise
     return np.clip(np.rint(shifted), 0, 255).astype(np.uint8)
+
+
+def gaussian_blur_sigma(severity: int) -> float:
+    """Return the approved CIFAR-10-C Gaussian-filter sigma for severity."""
+    return _parameter_for_severity(GAUSSIAN_BLUR_SIGMAS, severity)
+
+
+def gaussian_blur(image: np.ndarray, severity: int) -> np.ndarray:
+    """Blur one uint8 CIFAR-10 image using the approved Gaussian sigma.
+
+    The Gaussian filter is applied independently to each colour channel.  It
+    uses nearest-edge boundary handling, matching the CIFAR-10-C generator's
+    Gaussian-filter defaults.  Unlike Gaussian noise, blur is deterministic
+    and therefore has no seed argument.
+    """
+    _validate_image(image)
+    sigma = gaussian_blur_sigma(severity)
+    blurred = ndimage.gaussian_filter(
+        image.astype(np.float64), sigma=(sigma, sigma, 0.0), mode="nearest"
+    )
+    return np.clip(np.rint(blurred), 0, 255).astype(np.uint8)
+
+
+def rotation_angle(severity: int) -> float:
+    """Return the approved counter-clockwise rotation angle in degrees."""
+    return _parameter_for_severity(ROTATION_ANGLES, severity)
+
+
+def rotation(image: np.ndarray, severity: int) -> np.ndarray:
+    """Rotate one uint8 CIFAR-10 image around its centre.
+
+    Positive angles are counter-clockwise.  Bilinear interpolation is used and
+    pixels uncovered at the corners are filled with black (value 0).
+    """
+    _validate_image(image)
+    rotated = ndimage.rotate(
+        image.astype(np.float64),
+        angle=rotation_angle(severity),
+        axes=(1, 0),
+        reshape=False,
+        order=1,
+        mode="constant",
+        cval=0.0,
+        prefilter=False,
+    )
+    return np.clip(np.rint(rotated), 0, 255).astype(np.uint8)
+
+
+def _parameter_for_severity(parameters: tuple[float, ...], severity: int) -> float:
+    """Select a five-level corruption parameter after validating severity."""
+    if isinstance(severity, bool) or not isinstance(severity, numbers.Integral):
+        raise TypeError("severity must be an integer from 1 to 5")
+    if not 1 <= severity <= len(parameters):
+        raise ValueError("severity must be between 1 and 5")
+    return parameters[int(severity) - 1]
 
 
 def _validate_image(image: np.ndarray) -> None:
