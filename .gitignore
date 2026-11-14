@@ -37,7 +37,7 @@ artifacts/figures/
 results/
 
 # Downloaded datasets
-data/
+/data/
 
 # Model checkpoints and experiment outputs
 checkpoints/
