@@ -105,6 +105,7 @@ def main() -> None:
             "num_classes": data_config["num_classes"],
             "batch_size": data_config["batch_size"],
         },
+        scheduler_config=training_config.get("scheduler"),
     )
 
     results_dir = Path("results") / experiment["name"]

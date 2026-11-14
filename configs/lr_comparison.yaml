@@ -1,0 +1,19 @@
+experiment:
+  name: lr_comparison_001
+  seed: 303
+  device: auto
+
+data:
+  dataset: cifar10
+  num_classes: 10
+  batch_size: 128
+  num_workers: 2
+
+model:
+  architecture: resnet18
+  ensemble_size: 3
+
+training:
+  epochs: 20
+  learning_rate: 0.01
+  weight_decay: 0.0001

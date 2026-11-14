@@ -104,6 +104,7 @@ def train_model(
     checkpoint_path: str | Path = "checkpoints/best_model.pt",
     seed: int = 101,
     metadata: dict[str, Any] | None = None,
+    scheduler_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Train a model, select its best validation checkpoint, and return history."""
     if epochs <= 0:
@@ -124,11 +125,45 @@ def train_model(
         weight_decay=weight_decay,
     )
 
+    scheduler = None
+
+    if scheduler_config is not None:
+        scheduler_name = scheduler_config.get("name")
+
+        if scheduler_name != "step_lr":
+            raise ValueError(
+                f"Unsupported scheduler: {scheduler_name}"
+            )
+
+        step_size = scheduler_config.get("step_size")
+        gamma = scheduler_config.get("gamma")
+
+        if (
+            isinstance(step_size, bool)
+            or not isinstance(step_size, int)
+            or step_size <= 0
+        ):
+            raise ValueError("scheduler step_size must be a positive integer")
+
+        if (
+            isinstance(gamma, bool)
+            or not isinstance(gamma, (int, float))
+            or not 0 < gamma < 1
+        ):
+            raise ValueError("scheduler gamma must be between 0 and 1")
+
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size=step_size,
+            gamma=gamma,
+        )
+
     history: dict[str, Any] = {
         "train_loss": [],
         "train_accuracy": [],
         "validation_loss": [],
         "validation_accuracy": [],
+        "learning_rate": [],
     }
 
     best_accuracy = -1.0
@@ -137,6 +172,8 @@ def train_model(
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(1, epochs + 1):
+        current_lr = optimizer.param_groups[0]["lr"]
+
         train_loss, train_accuracy = train_one_epoch(
             model, train_loader, criterion, optimizer, device
         )
@@ -149,6 +186,7 @@ def train_model(
         history["train_accuracy"].append(train_accuracy)
         history["validation_loss"].append(validation_loss)
         history["validation_accuracy"].append(validation_accuracy)
+        history["learning_rate"].append(current_lr)
 
         print(
             f"Epoch {epoch:02d}/{epochs} | "
@@ -174,7 +212,10 @@ def train_model(
                 checkpoint,
             )
 
-        # Restore the model weights from the best validation checkpoint.
+        if scheduler is not None:
+            scheduler.step()
+
+    # Restore the model weights from the best validation checkpoint.
     best_checkpoint = torch.load(
         checkpoint,
         map_location=device,
