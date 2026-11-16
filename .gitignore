@@ -36,6 +36,13 @@ artifacts/figures/
 # Generated experiment results
 results/
 
-# Downloaded datasets and locally generated visualizations
-data/
+# Downloaded datasets
+/data/
+
+# Model checkpoints and experiment outputs
+checkpoints/
+*.pt
+*.pth
+
+# Locally generated visualizations
 outputs/
